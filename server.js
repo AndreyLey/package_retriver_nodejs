@@ -15,9 +15,17 @@ const PORT = process.env.PORT || 5050;
 const REDIS_PORT = process.env.REDIS_PORT || 5001;
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
 
-const redis_client = redis_db.createClient(REDIS_PORT);
+const redis_client = redis_db.createClient(REDIS_PORT,REDIS_HOST,{
+    retry_strategy: function(options){
+        if (options.attempt > 10) {
+            // End reconnecting with built in error
+            return undefined;
+          }
+    }
+});
+
 redis_client.on("error", function(error) {
-    console.error(`REDIS ERROR`+error);
+    console.error(`REDIS ERROR OCCURS: `+ error);
 });
 
 app.db = redis_client;
