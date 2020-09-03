@@ -1,4 +1,6 @@
 const fetch = require('node-fetch');
+const {get_version} = require('./string_parser');
+
 async function getPackageInfo(req,res,next)
 {
         try{
@@ -24,108 +26,54 @@ async function getPackageInfo(req,res,next)
     
 };
 
-async function recurtion_getPackages(req,res,next)
+const recurtion_getPackages = async (name, tag_name) =>
 {
-    console.log('Start fetching...')
-    const {name, tag_name}=req.params;
-    const dep = await fetch_and_orgenize(name,tag_name);//await get_allTree([]);
-    const rec_dep = await get_allTree(dep); 
-    console.log(`Repositiry: ${rec_dep.dep}`);
-    req.params.dependencies=rec_dep;//await get_allTree([])};
-    res.send(req.params);
-    //next();
-    // const response = await fetch(`https://registry.npmjs.org/${name}/${tag_name}`);
-    // const data = await response.json();
-    // let dep_array=[];
-    // let dep_from_data = 
-    // {
-    //     ...data.dependencies,
-    //     ...data.devDependencies
-    // };
-    // for(const[key,value] of Object.entries(dep_from_data))
-    // {
-    //     var new_dep={
-    //         name : key,
-    //         tag : value,
-    //         dep : []
-    //     };
-    //     //new_dep[key]=value;
-    //     new_dep.dep=[];
-    //     dep_array.push(new_dep);
-    // }
-    /////////////////////////////////////////////////////////
-    // for(var entry  of Object.entries(dep_from_data))
-    // {
-    //     let dependencie = Object.create(entry);
-    //     dependencie.dep_arr = [];
-    //     dep_array.push(dep);
-    //     //console.log(entry);
-    //     //dep_array.push({...entry, dep:[]});
-    // }
-    // Object.entries(dep_from_data).forEach(key,value=>
-    //     dep_array.push({key:value, dep:[]})
-    // );
-    // let dep_from_data = 
-    // {
-    //     ...data.dependencies,
-    //     ...data.devDependencies
-    // };
-    // for(var i in dep_from_data)
-    // {
-    //     //console.log(`Object ${i} and value: ${dep_from_data[i]}`);
-    //     dep_array.push({i,dep : []});
-    // }
-
-    //console.log(dep_array);
-    // data.dependencies.forEach(element => {
-    //     console.log(element);
-    //     dep_array.push({element,dep : []});
-    // });
-    // data.devDependencies.forEach(element => {
-    //     console.log(element);
-    //     dep_array.push({element,dep : []});
-    // });
-
-    //return dep_from_data;//{name:tag_name,"dep_tree": get_allTree};
+    try{
+        console.log('recurtion_getPackages: Start fetching...')
+        const dep = await fetch_and_orgenize(name,tag_name);
+        const rec_dep = await get_allTree(dep); 
+        console.log(`recurtion_getPackages: Repositiry: ${rec_dep}`);
+        return rec_dep;
+    }
+    catch(err)
+    {
+        console.log(err);
+        res.status(500);
+    }
 }
 
-async function get_allTree(dependencies)
+const get_allTree = async (dependencies) =>
 {
+    console.log(`Starts in get_allTree: ${JSON.stringify(dependencies)}`);
     if(dependencies===null || dependencies.length ==0)
     {
         return [];
     }
-
-    // for (var dependencie in dependencies )
-    // {
-    //     var response = async ()=>{await  fetch_and_orgenize(dependencie.name, dependencie.tag)};
-    //     dependencies.dep = get_allTree(response.dep);
-    // }
-
-
-
-    // dependencies.forEach(element=>{
-    //     var response = fetch_and_orgenize(element.name, element.tag);
-    //     dependencies.dep = get_allTree(response.dep);
-
-    // });
-
+    console.log(`Before for get_allTree`);
+    for (var index in dependencies )
+    {
+        console.log(`Print dependencie get_AllTree ${JSON.stringify(dependencies[index])}`);
+        var dep = await  fetch_and_orgenize(dependencies[index].name, dependencies[index].tag);
+        console.log(dep.length);
+        console.log(`Dependencies fetched get_AllTree ${JSON.stringify(dep)}`);
+        dependencies[index].dep  = await get_allTree(dep);
+    }
     return dependencies;
-    //const {name, tag_name}=req.params;
-
-    
 }
 
-async function fetch_and_orgenize(name, tag_name)
+const fetch_and_orgenize = async (name, tag_name) =>
 {
-    const response = await fetch(`https://registry.npmjs.org/${name}/${tag_name}`);
+    const tag_tosearch = get_version(tag_name);
+    console.log(`Fetching name: ${name} and tag: ${tag_tosearch}`);
+    const response = await fetch(`https://registry.npmjs.org/${name}/${tag_tosearch}`);
     const data = await response.json();
+    //console.log(`Get from url fetch_and_orgenize: ${JSON.stringify(data)}`);
 
     let dep_array=[];
     let dep_from_data = 
     {
-        ...data.dependencies,
-        ...data.devDependencies
+        ...data.dependencies//,
+        //...data.devDependencies
     };
 
     for(const[key,value] of Object.entries(dep_from_data))
@@ -137,7 +85,7 @@ async function fetch_and_orgenize(name, tag_name)
         };
         dep_array.push(new_dep);
     }
-
+    //console.log(`Returned dep from fetch_and_orgenize: ${JSON.stringify(dep_array)}`);
     return dep_array;
 }
 
